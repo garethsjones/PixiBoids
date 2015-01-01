@@ -9,27 +9,22 @@ $(document).ready(onReady)
 $(window).resize(resize)
 window.onorientationchange = resize;
 
-var width = 480;
-var height = 320;
-
-var boidTexture;
-
-var boids = [];
-
-var maxX = width;
-var minX = 0;
-var maxY = height;
-var minY = 0;
-
-var initialBoidCount = 2;
-var boidMaxVelocity = 6;
-
-var count = 0;
-var container;
-var pixiLogo;
-var clickImage;
-
-var amount = 100;
+var width = 480,
+    height = 320,
+    boidTexture,
+    boids = [],
+    maxX = width,
+    minX = 0,
+    maxY = height,
+    minY = 0,
+    initialBoidCount = 2,
+    boidMinVelocity = 2,
+    boidMaxVelocity = 6,
+    count = 0,
+    container,
+    pixiLogo,
+    clickImage,
+    amount = 100;
 
 var canvas = document.createElement('canvas');
 canvas.width = this.width;
@@ -39,8 +34,7 @@ PIXI.Texture.fromCanvas = function(canvas) {
     // give the canvas an id?
     var texture = PIXI.TextureCache[canvas];
 
-    if(!texture)
-    {
+    if (!texture) {
         var baseTexture = PIXI.BaseTextureCache[canvas];
         if(!baseTexture) baseTexture = new PIXI.BaseTexture(canvas);
         texture = new PIXI.Texture(baseTexture);
@@ -48,7 +42,7 @@ PIXI.Texture.fromCanvas = function(canvas) {
     }
 
     return texture;
-}
+};
 
 function onReady() {
     renderer = PIXI.autoDetectRenderer(800, 600);
@@ -71,7 +65,7 @@ function onReady() {
     requestAnimFrame(update);
 
     boidTexture = new PIXI.Texture.fromImage("bunny.png");
-    gayTexture = new PIXI.Texture.fromImage("pink-bunny.png");
+    pinkTexture = new PIXI.Texture.fromImage("pink-bunny.png");
 
     counter = document.createElement("div");
     counter.className = "counter";
@@ -86,7 +80,7 @@ function onReady() {
     for (var i = 0; i < initialBoidCount; i++) {
         addBoid();
     }
-    boids[0].texture = gayTexture;
+    boids[0].texture = pinkTexture;
 
     $(renderer.view).mousedown(function(){
         onTouchStart()
@@ -108,8 +102,8 @@ function resize()
     var width = $(window).width();
     var height = $(window).height();
 
-    if(width > 800)width  = 800;
-    if(height > 600)height = 600;
+    if (width > 800) width  = 800;
+    if (height > 600) height = 600;
 
     maxX = width;
     minX = 0;
@@ -141,7 +135,7 @@ function addBoid()
     boid.position.x = (maxX + minX) / 2;
     boid.position.y = (maxY + minY) / 2;
 
-    boid.velocity = Math.random() * boidMaxVelocity;
+    boid.velocity = (Math.random() * (boidMaxVelocity - boidMinVelocity)) + boidMinVelocity;
     boid.rotation = (Math.random() * 6.283);
 
     boid.anchor.x = 0.5;
@@ -164,30 +158,74 @@ function update()
         var boid = boids[i];
 
         var neighbours = [boid],
-            flockRotation = boid.rotation,
-            flockVelocity = boid.velocity;
+            flockRotation = 0,
+            flockVelocity = boid.velocity,
+            flockX = boid.x,
+            flockY = boid.y;
+
+        boid.alpha = 1;
 
         for (var j = 0; j < boids.length; j++) {
-            if (i != j && isWithinRadius(boid, boids[j], 50)) {
+            if (i == j) {
+                continue;
+            }
+            if (isWithinRadius(boid, boids[j], 50)) {
                 neighbours.push(boids[j]);
                 flockVelocity += boids[j].velocity;
-                flockRotation += boids[j].rotation;
+                flockRotation += rotationDiff(boid, boids[j]);
+                if (j == 0) {
+                    boid.alpha = 0.5;
+                }
             }
         }
 
         flockVelocity = flockVelocity / neighbours.length;
-        flockRotation = flockRotation / neighbours.length;
+        flockX = flockX / neighbours.length;
+        flockY = flockY / neighbours.length;
+
+        if (i == 0) {
+            //console.log("x: " + boid.x, "y: " + boid.y, "velocity: " + boid.velocity, "rotation:" + boid.rotation);
+            //console.log(boid.rotation);
+        }
 
         if (flockVelocity > boid.velocity) {
             boid.velocity += 0.2;
         } else if (flockVelocity < boid.velocity) {
-            boid.velocity -= 0.1;
+            boid.velocity -= 0.2;
         }
 
-        if (flockRotation > boid.rotation) {
+        if (flockRotation > 0) {
             boid.rotation += 0.1;
-        } else if (flockRotation < boid.rotation) {
+        } else if (flockRotation < 0) {
             boid.rotation -= 0.1;
+        }
+
+        if (boid.rotation > 4.71 || boid.rotation < 1.57) {
+            if (flockX < boid.x) {
+                boid.rotation += 0.1;
+            } else if (flockX > boid.x) {
+                boid.rotation -= 0.1;
+            }
+        } else {
+            if (flockX > boid.x) {
+                boid.rotation += 0.1;
+            } else if (flockX < boid.x) {
+                boid.rotation -= 0.1;
+            }
+        }
+
+        if (boid.rotation > 0 && boid.rotation < 3.14) {
+            if (flockY < boid.y) {
+                boid.rotation -= 0.1;
+            } else if (flockY > boid.y) {
+                boid.rotatioon += 0.1;
+            }
+        } else {
+            if (flockY > boid.y) {
+                boid.rotation -= 0.1;
+            } else if (flockY < boid.y) {
+                boid.rotation += 0.1;
+            }
         }
 
         // Move
@@ -217,8 +255,12 @@ function update()
         // Speed limit
         if (boid.velocity > boidMaxVelocity) {
             boid.velocity = boidMaxVelocity;
-        } else if (boid.velocity < 0) {
-            boid.velocity = 0;
+        } else if (boid.velocity < boidMinVelocity) {
+            boid.velocity = boidMinVelocity;
+        }
+
+        if (boid.rotation > 6.28) {
+            boid.rotation -= 6.28;
         }
     }
 
@@ -227,7 +269,20 @@ function update()
     stats.end();
 }
 
+function rotationDiff(boid1, boid2) {
+    var diff = boid2.rotation - boid1.rotation;
+    if (diff > 3.14) {
+        diff -= 3.14;
+        return -diff;
+    } else if (diff < -3.14) {
+        diff += 3.14;
+        return -diff;
+    }
+
+    return diff;
+}
+
 function isWithinRadius(boid1, boid2, radius) {
-    return Math.abs(boid1.x - boid2.y) < radius &&
+    return Math.abs(boid1.x - boid2.x) < radius &&
         Math.abs(boid1.y - boid2.y) < radius;
 }
