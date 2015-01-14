@@ -26,9 +26,21 @@ var width = 480,
     clickImage,
     amount = 100;
 
+var _360 = Math.PI * 2,
+    _270 = Math.PI * 1.5,
+    _180 = Math.PI,
+    _90 = Math.PI * 0.5;
+
 var canvas = document.createElement('canvas');
 canvas.width = this.width;
 canvas.height = this.height;
+
+var interval = setInterval(function() {
+    if (boids.length >= 200) {
+        return clearInterval(interval);
+    }
+    addBoid();
+}, 250)
 
 PIXI.Texture.fromCanvas = function(canvas) {
     // give the canvas an id?
@@ -50,8 +62,8 @@ function onReady() {
 
     amount = (renderer instanceof PIXI.WebGLRenderer) ? 50 : 5;
 
-    if(amount == 5) {
-        renderer.context.mozImageSmoothingEnabled = false
+    if (amount == 5) {
+        renderer.context.mozImageSmoothingEnabled = false;
         renderer.context.webkitImageSmoothingEnabled = false;
     }
 
@@ -87,7 +99,7 @@ function onReady() {
     });
 
     document.addEventListener("touchstart", onTouchStart, true);
-    renderer.view.touchstart = onTouchStart()
+    //renderer.view.touchstart = onTouchStart();
 
     resize();
 }
@@ -136,7 +148,7 @@ function addBoid()
     boid.position.y = (maxY + minY) / 2;
 
     boid.velocity = (Math.random() * (boidMaxVelocity - boidMinVelocity)) + boidMinVelocity;
-    boid.rotation = (Math.random() * 6.283);
+    boid.rotation = (Math.random() * _360);
 
     boid.anchor.x = 0.5;
     boid.anchor.y = 0.5;
@@ -161,7 +173,9 @@ function update()
             flockRotation = 0,
             flockVelocity = boid.velocity,
             flockX = boid.x,
-            flockY = boid.y;
+            flockY = boid.y,
+            desiredVelocity = boid.velocity,
+            desiredRotation = boid.rotation;
 
         boid.alpha = 1;
 
@@ -183,52 +197,51 @@ function update()
         flockX = flockX / neighbours.length;
         flockY = flockY / neighbours.length;
 
-        if (i == 0) {
-            //console.log("x: " + boid.x, "y: " + boid.y, "velocity: " + boid.velocity, "rotation:" + boid.rotation);
-            //console.log(boid.rotation);
-        }
-
         if (flockVelocity > boid.velocity) {
-            boid.velocity += 0.2;
+            desiredVelocity += 0.2;
         } else if (flockVelocity < boid.velocity) {
-            boid.velocity -= 0.2;
+            desiredVelocity -= 0.2;
         }
 
         if (flockRotation > 0) {
-            boid.rotation += 0.1;
+            desiredRotation += 0.1;
         } else if (flockRotation < 0) {
-            boid.rotation -= 0.1;
+            desiredRotation -= 0.1;
         }
 
-        if (boid.rotation > 4.71 || boid.rotation < 1.57) {
+        if (boid.rotation > _270 || boid.rotation < _90) {
             if (flockX < boid.x) {
-                boid.rotation += 0.1;
+                desiredRotation += 0.1;
             } else if (flockX > boid.x) {
-                boid.rotation -= 0.1;
+                desiredRotation -= 0.1;
             }
         } else {
             if (flockX > boid.x) {
-                boid.rotation += 0.1;
+                desiredRotation += 0.1;
             } else if (flockX < boid.x) {
-                boid.rotation -= 0.1;
+                desiredRotation -= 0.1;
             }
         }
 
-        if (boid.rotation > 0 && boid.rotation < 3.14) {
+        if (boid.rotation > 0 && boid.rotation < _180) {
             if (flockY < boid.y) {
-                boid.rotation -= 0.1;
+                desiredRotation -= 0.1;
             } else if (flockY > boid.y) {
-                boid.rotatioon += 0.1;
+                desiredRotation += 0.1;
             }
         } else {
             if (flockY > boid.y) {
-                boid.rotation -= 0.1;
+                desiredRotation -= 0.1;
             } else if (flockY < boid.y) {
-                boid.rotation += 0.1;
+                desiredRotation += 0.1;
             }
         }
 
+        // Spin
+        boid.rotation = desiredRotation;
+
         // Move
+        boid.velocity = desiredVelocity;
         dx = Math.sin(-boid.rotation) * boid.velocity;
         dy = Math.cos(-boid.rotation) * boid.velocity;
 
@@ -249,7 +262,7 @@ function update()
         }
 
         // Randomise
-        boid.rotation += (Math.random() - 0.5) / 20;
+        if (Math.random() > 0.9) boid.rotation += (Math.random() - 0.5) / 20;
         boid.velocity += (Math.random() - 0.5) / 10;
 
         // Speed limit
@@ -259,8 +272,8 @@ function update()
             boid.velocity = boidMinVelocity;
         }
 
-        if (boid.rotation > 6.28) {
-            boid.rotation -= 6.28;
+        if (boid.rotation > _360) {
+            boid.rotation -= _360;
         }
     }
 
@@ -271,11 +284,11 @@ function update()
 
 function rotationDiff(boid1, boid2) {
     var diff = boid2.rotation - boid1.rotation;
-    if (diff > 3.14) {
-        diff -= 3.14;
+    if (diff > _180) {
+        diff -= _180;
         return -diff;
-    } else if (diff < -3.14) {
-        diff += 3.14;
+    } else if (diff < -_180) {
+        diff += _180;
         return -diff;
     }
 
